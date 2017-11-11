@@ -3,11 +3,10 @@
 
 import os
 import sys
-#import unicodedata
-#from jcconv import *
 import operator
 import requests
 import json
+import argparse
 from slugify import slugify
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -23,6 +22,13 @@ itextBaseURL = 'http://ec2-34-224-27-91.compute-1.amazonaws.com:8080/'
 itextAPI = itextBaseURL + 'api/'
 
 itextMatches = {}
+
+bins = {}
+binLabels = []
+binLabelCounts = {}
+docsToBins = {}
+
+binsFile = open('bin_texts.txt', 'w')
 
 def queryPage(url):
 
@@ -61,26 +67,6 @@ def apiHarvester(baseURL, query, key):
     docsRead += limit
 
   return allDocs
-
-print("Querying metadata")
-allDocs = apiHarvester(itextBaseURL, "metadata", "docs")
-print("Querying matches")
-allMatches = apiHarvester(itextBaseURL, "clustered_matches", "docs")
-
-print(len(allDocs), "metadata docs")
-print(len(allMatches), "clustered_matches")
-
-# XXX Sort keys also could be parameters (e.g., author first, then year)
-print("sorting docs")
-#allDocs.sort(key=lambda x: (int(x['metadata']['publication_year']), x['metadata']['title']))
-allDocs.sort(key=lambda x: x['filename'])
-
-bins = {}
-binLabels = []
-binLabelCounts = {}
-docsToBins = {}
-
-binsFile = open('bin_texts.txt', 'w')
 
 def bankBinDocs(docsInBin):
   global binLabelCounts, binlabels, bins, docsToBins, binsFile, iTextMatches
@@ -123,7 +109,6 @@ def bankBinDocs(docsInBin):
 
     if (getDocTexts):
       fileID = doc['file_id']
-      # Also grab the doc texts and put them in a folder?
       textInfo = queryPage(itextAPI + 'texts/' + str(fileID))
       docText = textInfo[0]['text']
       binText += docText + " "
@@ -139,109 +124,126 @@ def bankBinDocs(docsInBin):
   with open('binsJSON/' + binID + ".json", "w") as binFile:
     json.dump(binJSON, binFile)
 
-print("Building intertext matrix")
+if __name__ == '__main__':
 
-textMatches = {}
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--version', action='version', version='1.0.0')
 
-for pair in allMatches:
-  sourceDoc = pair['source_filename'].replace('.txt','')
-  targetDoc = pair['target_filename'].replace('.txt','')
-  #similarity = pair['similarity']
-  matchText = pair['target_match']
+  args = parser.parse_args()
+  #args.func(args)
 
-  if (matchText in textMatches):
-    textMatches[matchText] += 1
-  else:
-    textMatches[matchText] = 1
+  print("Querying metadata")
+  allDocs = apiHarvester(itextBaseURL, "metadata", "docs")
+  print("Querying matches")
+  allMatches = apiHarvester(itextBaseURL, "clustered_matches", "docs")
 
-  if (sourceDoc not in itextMatches):
-    itextMatches[sourceDoc] = {targetDoc: [pair]}
-  else:
-    if (targetDoc in itextMatches[sourceDoc]):
-      itextMatches[sourceDoc][targetDoc].append(pair)
+  print(len(allDocs), "metadata docs")
+  print(len(allMatches), "clustered_matches")
+
+  # XXX Sort keys also could be parameters (e.g., author first, then year)
+  print("sorting docs")
+  #allDocs.sort(key=lambda x: (int(x['metadata']['publication_year']), x['metadata']['title']))
+  allDocs.sort(key=lambda x: x['filename'])
+
+  print("Building intertext matrix")
+
+  textMatches = {}
+
+  for pair in allMatches:
+    sourceDoc = pair['source_filename'].replace('.txt','')
+    targetDoc = pair['target_filename'].replace('.txt','')
+    matchText = pair['target_match']
+
+    if (matchText in textMatches):
+      textMatches[matchText] += 1
     else:
-      itextMatches[sourceDoc][targetDoc] = [pair]
-  # This makes the relations symmetrical (not sure they should be)
-  if (targetDoc not in itextMatches):
-    itextMatches[targetDoc] = {sourceDoc: [pair]}
-  else:
-    if (sourceDoc in itextMatches[targetDoc]):
-      itextMatches[targetDoc][sourceDoc].append(pair)
+      textMatches[matchText] = 1
+
+    if (sourceDoc not in itextMatches):
+      itextMatches[sourceDoc] = {targetDoc: [pair]}
     else:
-      itextMatches[targetDoc][sourceDoc] = [pair]
-
-sortedMatches = sorted(textMatches.iteritems(), key=operator.itemgetter(1))
-sortedMatches.reverse()
-
-with open('itext_phrases.txt', 'w') as phrasesFile:
-  for match in sortedMatches:
-    if (match[1] > 1):
-      #print(match[0] + ": " + str(match[1]))
-      phrasesFile.write(match[0] + "\t" + str(match[1]) + "\n")
-
-print("Populating doc bins")
-
-docsPerBin = 1
-
-if (len(allDocs) > maxBins):
-  docsPerBin = len(allDocs) / maxBins
-
-print(docsPerBin, "docs per bin")
-
-spaceInBin = docsPerBin
-docsInBin = []
-
-for doc in allDocs:
-  docID = doc['filename'].replace('.txt', '')
-  docsInBin.append(doc)
-
-  spaceInBin -= 1
-  if (spaceInBin < 1):
-    bankBinDocs(docsInBin)
-    spaceInBin += docsPerBin
-    docsInBin = []
-
-if (len(docsInBin) > 0):
-  bankBinDocs(docsInBin)
-
-print("Writing labels file")
-with open("bin_labels.txt", "w") as labelsFile:
-  for label in binLabels:
-    labelsFile.write(label + "\n")
-
-print ("Building intertextualitet similarity matrix for bins")
-with open("itext_sim.txt", 'w') as itextFile:
-  for binLabel1 in binLabels:
-    binRow = []
-    bl1docs = []
-    for docID in bins[binLabel1]:
-      bl1docs.append(docID)
-    for binLabel2 in binLabels:
-      if (binLabel1 == binLabel2):
-        binRow.append("1")
-        continue
-      bl2docs = []
-      for docID in bins[binLabel2]:
-        bl2docs.append(docID)
-      colMatches = []
-      for docID1 in bl1docs:
-        if (docID1 in itextMatches):
-          for docID2 in bl2docs:
-            if (docID2 in itextMatches[docID1]):
-              for match in itextMatches[docID1][docID2]:
-                colMatches.append(match['similarity'])
-      for docID2 in bl2docs:
-        if (docID2 in itextMatches):
-          for docID1 in bl1docs:
-            if (docID1 in itextMatches[docID2]):
-              for match in itextMatches[docID2][docID1]:
-                # Dumb way to avoid double-counting matches
-                #if (match not in colMatches):
-                colMatches.append(match['similarity'])
-      if (len(colMatches) > 0):
-        # XXX Use maximum match for the bin? Mean? Median?
-        #binRow.append(str(numpy.mean(colMatches)))
-        binRow.append(str(max(colMatches)))
+      if (targetDoc in itextMatches[sourceDoc]):
+        itextMatches[sourceDoc][targetDoc].append(pair)
       else:
-        binRow.append("0")
-    itextFile.write("\t".join(binRow) + "\n")
+        itextMatches[sourceDoc][targetDoc] = [pair]
+    # This makes the relations symmetrical (do they really need to be?)
+    if (targetDoc not in itextMatches):
+      itextMatches[targetDoc] = {sourceDoc: [pair]}
+    else:
+      if (sourceDoc in itextMatches[targetDoc]):
+        itextMatches[targetDoc][sourceDoc].append(pair)
+      else:
+        itextMatches[targetDoc][sourceDoc] = [pair]
+
+  sortedMatches = sorted(textMatches.iteritems(), key=operator.itemgetter(1))
+  sortedMatches.reverse()
+
+  with open('itext_phrases.txt', 'w') as phrasesFile:
+    for match in sortedMatches:
+      if (match[1] > 1):
+        phrasesFile.write(match[0] + "\t" + str(match[1]) + "\n")
+
+  print("Populating doc bins")
+
+  docsPerBin = 1
+
+  if (len(allDocs) > maxBins):
+    docsPerBin = len(allDocs) / maxBins
+
+  print(docsPerBin, "docs per bin")
+
+  spaceInBin = docsPerBin
+  docsInBin = []
+
+  for doc in allDocs:
+    docID = doc['filename'].replace('.txt', '')
+    docsInBin.append(doc)
+
+    spaceInBin -= 1
+    if (spaceInBin < 1):
+      bankBinDocs(docsInBin)
+      spaceInBin += docsPerBin
+      docsInBin = []
+
+  if (len(docsInBin) > 0):
+    bankBinDocs(docsInBin)
+
+  print("Writing labels file")
+  with open("bin_labels.txt", "w") as labelsFile:
+    for label in binLabels:
+      labelsFile.write(label + "\n")
+
+  print ("Building intertextualitet similarity matrix for bins")
+  with open("itext_sim.txt", 'w') as itextFile:
+    for binLabel1 in binLabels:
+      binRow = []
+      bl1docs = []
+      for docID in bins[binLabel1]:
+        bl1docs.append(docID)
+      for binLabel2 in binLabels:
+        if (binLabel1 == binLabel2):
+          binRow.append("1")
+          continue
+        bl2docs = []
+        for docID in bins[binLabel2]:
+          bl2docs.append(docID)
+        colMatches = []
+        for docID1 in bl1docs:
+          if (docID1 in itextMatches):
+            for docID2 in bl2docs:
+              if (docID2 in itextMatches[docID1]):
+                for match in itextMatches[docID1][docID2]:
+                  colMatches.append(match['similarity'])
+        for docID2 in bl2docs:
+          if (docID2 in itextMatches):
+            for docID1 in bl1docs:
+              if (docID1 in itextMatches[docID2]):
+                for match in itextMatches[docID2][docID1]:
+                  colMatches.append(match['similarity'])
+        if (len(colMatches) > 0):
+          # XXX Use maximum match for the bin? Mean? Median?
+          #binRow.append(str(numpy.mean(colMatches)))
+          binRow.append(str(max(colMatches)))
+        else:
+          binRow.append("0")
+      itextFile.write("\t".join(binRow) + "\n")
