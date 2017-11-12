@@ -12,13 +12,13 @@ reload(sys)
 sys.setdefaultencoding("utf-8")
 
 # Max number of items on one side of the matrix -- parameter
-#maxBins = 2000
-maxBins = 100
+maxBins = 1000
 useCachedFiles = True # parameter
-getDocTexts = True
+getDocTexts = False
 
 # Base URL (with port) of the Intertextualitet site -- parameter
-itextBaseURL = 'http://ec2-34-224-27-91.compute-1.amazonaws.com:8080/'
+#itextBaseURL = 'http://ec2-34-224-27-91.compute-1.amazonaws.com:8080/'
+itextBaseURL = 'http://localhost:8080/'
 itextAPI = itextBaseURL + 'api/'
 
 itextMatches = {}
@@ -45,7 +45,7 @@ def queryPage(url):
   return pageData
 
 def apiHarvester(baseURL, query, key):
-  firstMetaURL = itextAPI + query
+  firstMetaURL = baseURL + query
   firstMetaPage = queryPage(firstMetaURL)
   totalDocs = firstMetaPage['total']
 
@@ -124,18 +124,46 @@ def bankBinDocs(docsInBin):
   with open('binsJSON/' + binID + ".json", "w") as binFile:
     json.dump(binJSON, binFile)
 
+def processArgs(args):
+
+  global useCachedFiles, getDocTexts, maxBins, itextBaseURL, itextAPI
+
+  print("processing command line args")
+
+  if (not args.no_cache):
+    useCachedFiles = False
+  if args.get_texts:
+    getDocTexts = True
+  if ('bins' in args):
+    maxBins = args.bins
+    print("Set maxBins to ", maxBins)
+  if ('url' in args):
+    print("setting URL to " + args.url)
+    itextBaseURL = args.url
+    if (itextBaseURL[-1] != '/'):
+      itextBaseURL += '/'
+    itextAPI = itextBaseURL + 'api/'
+
+
 if __name__ == '__main__':
 
-  parser = argparse.ArgumentParser()
+  parser = argparse.ArgumentParser(description='Generate an interactive heatmap matrix of text reuse')
   parser.add_argument('--version', action='version', version='1.0.0')
+  parser.add_argument('--bins', type=int, help='The number of "bins" on each dimension of the matrix. Affects the resolution of the heatmap. Default=1000.', default=1000)
+  parser.add_argument('--url', help='The URL (with port number) of the running Intertextualitet service. Default=http://localhost:8080/', default='http://localhost:8080/')
+  parser.add_argument('--no_cache', action='store_true', help='Do not use the previous results from the API that are stored locally. Will re-download all data. Default behavior is to use the cache.')
+  parser.add_argument('--get_texts', action='store_true', help='Use to download the full text of each document. Can take a long time. Default behavior is not to download the texts.')
+  parser.set_defaults(func=processArgs)
 
   args = parser.parse_args()
-  #args.func(args)
+  args.func(args)
+
+  print("base URL is now", itextBaseURL)
 
   print("Querying metadata")
-  allDocs = apiHarvester(itextBaseURL, "metadata", "docs")
+  allDocs = apiHarvester(itextAPI, "metadata", "docs")
   print("Querying matches")
-  allMatches = apiHarvester(itextBaseURL, "clustered_matches", "docs")
+  allMatches = apiHarvester(itextAPI, "clustered_matches", "docs")
 
   print(len(allDocs), "metadata docs")
   print(len(allMatches), "clustered_matches")
