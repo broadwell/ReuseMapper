@@ -11,8 +11,6 @@ Running ReuseMapper.py (see below for usage) generates the requisite output file
 
 **Note**: Changing the --bins parameter can have a major effect on the resulting heatmap (see screenshots below).
 
-ReuseMapper.py also generates a summary of "commonly used phrases" in itext_phrases.txt
-
 ```
   usage: ReuseMapper.py [-h] [--version] [--bins BINS] [--url URL] [--no_cache]
                         [--get_texts]
@@ -31,9 +29,11 @@ ReuseMapper.py also generates a summary of "commonly used phrases" in itext_phra
                  time. Default behavior is not to download the texts.
 ```
 
+ReuseMapper.py also generates a summary of "commonly used phrases" in the output file itext_phrases.txt.
+
 ## MergeMatrices.py
 
-This script can be used to merge two matrix files, for example itext_sim.txt produced by ReuseHeatmapper.py and a dist_sim.txt output file from [TextHeatmapper](https://github.com/UCLALibLab/text-heatmapper), for example, provided they have the same dimensions. It produces a merged matrix file, imerged_sim.txt that can be used with the Plotly.js viewer (see for example Screenshot 3), provided the link is changed from itext_sim.txt to imerged_sim.txt in the source code of itextmap.html.
+This script can be used to merge two matrix files, for example itext_sim.txt produced by ReuseHeatmapper.py and a dist_sim.txt output file from [TextHeatmapper](https://github.com/UCLALibLab/text-heatmapper), for example, provided they have the same dimensions. It produces a merged matrix file, imerged_sim.txt that can be used with the Plotly.js viewer (see for example Screenshot 3), provided the link in the source code of itextmap.js is changed from "itext_sim.txt" to "imerged_sim.txt".
 
 ## Screenshots
 
