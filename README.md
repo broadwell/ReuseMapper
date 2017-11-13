@@ -1,7 +1,7 @@
 # ReuseMapper
 Generate an interactive heatmap matrix based on text reuse data
 
-*Requirements*: Uses built-in Python 2.7 modules, with the exception of [slugify](https://github.com/un33k/python-slugify).
+**Requirements**: Uses built-in Python 2.7 modules, with the exception of [slugify](https://github.com/un33k/python-slugify), which must be installed separately.
 
 The [Plotly.js](https://plot.ly/javascript/) Javascript library renders the heatmaps, and is included in the repository along with its various dependencies (D3.js, jQuery, etc.).
 
@@ -9,7 +9,7 @@ The [Plotly.js](https://plot.ly/javascript/) Javascript library renders the heat
 
 Running ReuseMapper.py (see below for usage) generates the requisite output files (itext_sim.txt, bin_labels.txt, and the files in the binsJSON/ folder) to populate the interactive heatmap, which can be viewed by opening itextmap.html in a web browser, provided it's in a web-accessible folder (e.g., http://localhost/~yourname/ReuseMapper/itextmap.html) or is being served via a simple server like node.js's [simple-server](https://www.npmjs.com/package/simple-server) module.
 
-*Note*: Changing the --bins parameter can have a major effect on the resulting heatmap (see screenshots below).
+**Note**: Changing the --bins parameter can have a major effect on the resulting heatmap (see screenshots below).
 
 ReuseMapper.py also generates a summary of "commonly used phrases" in itext_phrases.txt
 
