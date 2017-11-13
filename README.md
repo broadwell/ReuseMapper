@@ -1,6 +1,7 @@
 # ReuseMapper
 Generate an interactive heatmap matrix based on text reuse data
 
+```
   usage: ReuseMapper.py [-h] [--version] [--bins BINS] [--url URL] [--no_cache]
                         [--get_texts]
 
@@ -16,3 +17,4 @@ Generate an interactive heatmap matrix based on text reuse data
                  the cache.
     --get_texts  Use to download the full text of each document. Can take a long
                  time. Default behavior is not to download the texts.
+```
